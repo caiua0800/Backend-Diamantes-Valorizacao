@@ -6,7 +6,7 @@ const moment = require('moment-timezone');
 const app = express();
 const axios = require('axios');
 const mongoDBService = new MongoDBService();
-const { criarPix, verifyPayment, editPayment } = require('./MercadoPagoController');
+const { criarPix, verifyPayment } = require('./MercadoPagoController');
 app.use(express.json());
 
 app.post('/pix', criarPix);
@@ -31,7 +31,13 @@ app.get('/obterStatusPagamento/:id', async (req, res) => {
 });
 
 const verificarPagamentos = async (db) => {
+
     const purchases = await db.collection('Purchases').find({ status: 1 }).toArray();
+
+    if (purchases.length === 0) {
+        console.log("saindo da verificação de pagamento pois não há pendencias.")
+        return;
+    }
 
     const resToken = await axios.post(`${process.env.BASE_ROUTE}auth/token`,
         {
@@ -45,14 +51,15 @@ const verificarPagamentos = async (db) => {
             'Authorization': `Bearer ${resToken.data.token}`
         }
     });
+    console.log(resToken.data.token);
 
-    if(systemConfig_automatic_payment_verification.data 
+    if (systemConfig_automatic_payment_verification.data
         && systemConfig_automatic_payment_verification.data.value
-    && systemConfig_automatic_payment_verification.data.value === "false"){
+        && systemConfig_automatic_payment_verification.data.value === "false") {
         console.log(systemConfig_automatic_payment_verification.data)
         console.log("Cancelado Verificação automática de pagamentos");
         return;
-    }else{
+    } else {
         console.log("Verificação automática de pagamentos ativada, iniciando verificação...");
     }
 
@@ -95,9 +102,17 @@ const verificarPagamentos = async (db) => {
     }
 }
 
+function areDatesInSameMonthAndYear(date1, date2) {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+
+    return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth();
+}
+
 
 const valorizarContratos = async (db) => {
     const purchases = await db.collection('Purchases').find({ status: 2 }).toArray();
+    const balanceHistories = await db.collection('BalanceHistories').find({}).toArray();
 
     for (const purchase of purchases) {
         const {
@@ -161,6 +176,42 @@ const valorizarContratos = async (db) => {
                 { $set: { balance: newBalance } }
             );
 
+            var clientBalanceHistory = balanceHistories.find(c => c.clientId = clientId);
+            var currentCurrent = clientBalanceHistory.current;
+
+
+            var valorDoMesAtual = null;
+
+            if (clientBalanceHistory.Items) {
+                clientBalanceHistory.Items.forEach(item => {
+                    if (item && item.dateCreated && areDatesInSameMonthAndYear(new Date(), item.dateCreated)) {
+                        valorDoMesAtual = item;
+                    }
+                });
+                if (valorDoMesAtual) {
+                    clientBalanceHistory.Items.forEach(e => {
+                        if (e && e.dateCreated && areDatesInSameMonthAndYear(new Date(), e.dateCreated)) {
+                            e.value = parseFloat(valorDoMesAtual.value) + parseFloat(dailyIncome);
+                        }
+                    })
+                }
+            }
+
+
+            if (!valorDoMesAtual) {
+                clientBalanceHistory.Items = []
+                clientBalanceHistory.Items.push({
+                    dateCreated: new Date(),
+                    value: parseFloat(dailyIncome)
+                });
+            }
+
+
+            await db.collection('BalanceHistories').updateOne(
+                { _id: clientId },
+                { $set: { current: parseFloat(currentCurrent) + parseFloat(dailyIncome), Items: clientBalanceHistory.Items } }
+            );
+
             if (newCurrentIncome >= finalIncomeVal) {
                 await db.collection('Purchases').updateOne(
                     { _id: purchase._id },
@@ -175,9 +226,10 @@ const valorizarContratos = async (db) => {
 const run = async () => {
     try {
         await mongoDBService.connect();
-        const db = mongoDBService.getDatabase('OscarPlataforma');
+        const db = mongoDBService.getDatabase('DiamondPlus');
+        await valorizarContratos(db);
 
-        cron.schedule('27 16 * * *', async () => {
+        cron.schedule('20 19 * * *', async () => {
             console.log('Executando verificação de pagamentos...');
             await verificarPagamentos(db);
 
