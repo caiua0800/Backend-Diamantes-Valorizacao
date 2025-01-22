@@ -235,8 +235,8 @@ const run = async () => {
             await valorizarContratos(db);
         });
 
-        app.listen(3030, () => {
-            console.log('Servidor rodando na porta 3030');
+        app.listen(4040, () => {
+            console.log('Servidor rodando na porta 4040');
         });
     } catch (err) {
         console.error('Erro ao conectar ou iniciar o serviço:', err);
