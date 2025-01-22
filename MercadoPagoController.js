@@ -107,7 +107,6 @@ const verifyPayment = async (id) => {
 const editPayment = async (id, newStatus) => {
     const mp_url = `https://api.mercadopago.com/v1/payments/${id}`;
 
-    // Mapeamento de novos status
     let status;
     switch (newStatus) {
         case 1:
@@ -120,7 +119,7 @@ const editPayment = async (id, newStatus) => {
             status = "cancelled";
             break;
         default:
-            throw new Error("Status inválido"); // Lança um erro se o status não for reconhecido
+            throw new Error("Status inválido");
     }
 
     try {

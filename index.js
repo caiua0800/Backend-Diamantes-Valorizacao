@@ -51,7 +51,6 @@ const verificarPagamentos = async (db) => {
             'Authorization': `Bearer ${resToken.data.token}`
         }
     });
-    console.log(resToken.data.token);
 
     if (systemConfig_automatic_payment_verification.data
         && systemConfig_automatic_payment_verification.data.value
@@ -71,7 +70,7 @@ const verificarPagamentos = async (db) => {
 
                 let newStatus;
                 if (status === "cancelled" || status === "rejected") {
-                    newStatus = 4; // Status 4
+                    newStatus = 4;
                 } else if (status === "authorized" || status === "approved") {
                     newStatus = 2; // Status 2
                 }
@@ -197,7 +196,6 @@ const valorizarContratos = async (db) => {
                 }
             }
 
-
             if (!valorDoMesAtual) {
                 clientBalanceHistory.Items = []
                 clientBalanceHistory.Items.push({
@@ -205,7 +203,6 @@ const valorizarContratos = async (db) => {
                     value: parseFloat(dailyIncome)
                 });
             }
-
 
             await db.collection('BalanceHistories').updateOne(
                 { _id: clientId },
@@ -222,6 +219,7 @@ const valorizarContratos = async (db) => {
         }
     }
 };
+
 
 const run = async () => {
     try {
