@@ -124,6 +124,7 @@ const valorizarContratos = async (db) => {
             daysToFirstWithdraw,
         } = purchase;
 
+
         const currentIncomeVal = parseFloat(currentIncome);
         const finalIncomeVal = parseFloat(finalIncome);
         const daysToFirstWithdrawVal = daysToFirstWithdraw ? parseFloat(daysToFirstWithdraw) : 90;
@@ -224,10 +225,9 @@ const valorizarContratos = async (db) => {
 const run = async () => {
     try {
         await mongoDBService.connect();
-        const db = mongoDBService.getDatabase('DiamondPlus');
-        await valorizarContratos(db);
+        const db = mongoDBService.getDatabase('Diamond');
 
-        cron.schedule('20 19 * * *', async () => {
+        cron.schedule('02 01 * * *', async () => {
             console.log('Executando verificação de pagamentos...');
             await verificarPagamentos(db);
 
